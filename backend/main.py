@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from database import db, Incident
+from database import db
 from vision_agent import analyze_image_with_vision
 from spatial_engine import find_spatial_cluster
 from bureaucracy_agent import generate_statutory_docket

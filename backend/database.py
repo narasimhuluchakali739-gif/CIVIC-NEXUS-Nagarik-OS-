@@ -5,6 +5,9 @@ Works natively with or without Pydantic.
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
+class Incident:
+    pass
+
 class IncidentStore:
     def __init__(self):
         self._incidents: List[Dict[str, Any]] = []
