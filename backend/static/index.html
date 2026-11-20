@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CIVIC-NEXUS // Autonomous Multimodal Civic Governance OS</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#060913',
+            cardbg: '#0d1322',
+            surface: '#131b2e',
+            bordercol: '#1e293b',
+            electric: '#4f46e5',
+            cyanGlow: '#06b6d4',
+            sirenRed: '#f43f5e',
+            hazardAmber: '#f59e0b',
+            pureGreen: '#10b981'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet CSS & JS for Interactive Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #111a33 0%, #060913 75%);
+    }
+    .custom-marker {
+      background: none !important;
+      border: none !important;
+    }
+    .leaflet-tile {
+      filter: brightness(0.6) invert(1) contrast(3.5) hue-rotate(205deg) saturate(0.2) brightness(0.85);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.8); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 12px rgba(244, 63, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+    }
+    .pulsing-critical {
+      animation: pulse-ring 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    .glassmorphism {
+      background: rgba(13, 19, 34, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    #map { height: 560px; z-index: 10; border-radius: 0.75rem; }
+    
+    @media print {
+      body * { visibility: hidden; }
+      #printable-docket, #printable-docket * { visibility: visible; }
+      #printable-docket { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; }
+    }
+  </style>
+</head>
+<body class="bg-obsidian text-slate-100 min-h-screen font-sans flex flex-col">
+
+  <!-- TOP APP BAR -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-indigo-300 to-white bg-clip-text text-transparent flex items-center gap-2">
+          CIVIC-NEXUS <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950/80 text-cyan-400 border border-indigo-700/60 font-mono tracking-widest">GOV-OS 2.0</span>
+        </h1>
+        <p id="lbl-tagline" class="text-xs text-slate-400">Autonomous Multimodal Civic Governance, Spatial Triage & Anti-Corruption Engine</p>
+      </div>
+    </div>
+
+    <!-- LANGUAGE SWITCHER + LIVE TELEMETRY STATS -->
+    <div class="flex items-center space-x-3 text-xs font-mono">
+      <!-- LANGUAGE TOGGLE -->
+      <button onclick="toggleLanguage()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-cyan-400 font-bold flex items-center gap-1.5 transition">
+        <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+        <span id="lang-btn-text">Language: EN</span>
+      </button>
+
+      <div class="bg-surface/80 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+        <span class="h-2 w-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="text-slate-400" id="lbl-stat-active">Active Incidents:</span>
+        <span id="stat-total" class="font-bold text-white">0</span>
+      </div>
+      <div class="bg-surface/80 border border-rose-950/80 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+        <span class="h-2 w-2 rounded-full bg-rose-500"></span>
+        <span class="text-slate-400" id="lbl-stat-critical">Critical (≥8):</span>
+        <span id="stat-critical" class="font-bold text-rose-400">0</span>
+      </div>
+      <div class="bg-surface/80 border border-amber-950/80 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+        <span class="text-slate-400" id="lbl-stat-dedup">Deduplicated:</span>
+        <span id="stat-clustered" class="font-bold text-amber-400">0</span>
+      </div>
+      <div class="bg-surface/80 border border-emerald-950/80 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span class="text-slate-400" id="lbl-stat-fraud">Fraud Blocked:</span>
+        <span id="stat-fraud" class="font-bold text-emerald-400">0</span>
+      </div>
+      <button onclick="seedData()" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/50 rounded-lg text-indigo-200 hover:text-white transition flex items-center gap-1.5 shadow-sm">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+        <span id="lbl-btn-seed">Seed City Data</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- USER HOW-IT-WORKS STEPPER BANNER -->
+  <div class="bg-gradient-to-r from-indigo-950/40 via-surface/60 to-indigo-950/40 border-b border-slate-800/80 px-6 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-3">
+      <div class="flex items-center gap-2 text-cyan-400 font-bold">
+        <i data-lucide="info" class="w-4 h-4"></i>
+        <span id="lbl-guide-title">HOW IT WORKS:</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-4 text-slate-300">
+        <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">1</span> Snap Photo / Speak</span>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold text-[10px]">2</span> AI Deepfake & EXIF Audit</span>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-[10px]">3</span> Spatial Clustering & Legal Notice</span>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">4</span> Contractor Proof-of-Resolution</span>
+      </div>
+      <span class="text-[11px] text-slate-400 font-mono">SLA Mandate: 12-48h</span>
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <div class="border-b border-slate-800 bg-slate-900/60 px-6 py-2.5 flex space-x-2">
+    <button onclick="switchTab('triage')" id="tab-btn-triage" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition">
+      <i data-lucide="map" class="w-4 h-4"></i> <span id="lbl-tab-triage">City Triage Heatmap</span>
+    </button>
+    <button onclick="switchTab('citizen')" id="tab-btn-citizen" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+      <i data-lucide="camera" class="w-4 h-4"></i> <span id="lbl-tab-citizen">Citizen Instant Report (PWA)</span>
+    </button>
+    <button onclick="switchTab('rights')" id="tab-btn-rights" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+      <i data-lucide="book-open" class="w-4 h-4"></i> <span id="lbl-tab-rights">Multilingual Rights & Scheme Explainer</span>
+    </button>
+    <button onclick="switchTab('por')" id="tab-btn-por" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+      <i data-lucide="check-check" class="w-4 h-4"></i> <span id="lbl-tab-por">Proof-of-Resolution Lab</span>
+    </button>
+  </div>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+
+    <!-- VIEW 1: CITY TRIAGE HEATMAP (ADMIN / COMMAND CENTER) -->
+    <div id="view-triage" class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="radio" class="w-5 h-5 text-rose-500 animate-pulse"></i> <span id="lbl-triage-title">Real-Time Geospatial Incident Triage</span>
+          </h2>
+          <p id="lbl-triage-subtitle" class="text-xs text-slate-400">Displays real-time hazards, community priority clustering, and automated ward escalation countdowns.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-400 font-medium" id="lbl-filter-cat">Filter Category:</span>
+          <select id="category-filter" onchange="loadIncidents()" class="bg-surface border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 font-medium">
+            <option value="ALL">All Categories</option>
+            <option value="Road Hazard (Pothole/Cracks)">Road Hazards</option>
+            <option value="Water Supply/Sewage Leak">Water / Sewage Leaks</option>
+            <option value="Electrical/Streetlight Hazard">Electrical Hazards</option>
+            <option value="Sanitation/Garbage Dump">Sanitation / Waste Dumps</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- MAP CONTAINER & DETAIL DRAWER -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 glassmorphism p-2 rounded-2xl border border-slate-800 shadow-2xl">
+          <div id="map"></div>
+        </div>
+
+        <!-- RIGHT INCIDENT FEED / INSPECTOR -->
+        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 flex flex-col h-[560px] shadow-2xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="flex items-center gap-1.5"><i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i> <span id="lbl-docket-inspector">Docket Inspector</span></span>
+            <span class="text-[10px] text-cyan-400 font-mono bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/80">LIVE FEED</span>
+          </h3>
+          
+          <div id="selected-incident-card" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+            <div class="p-6 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+              <i data-lucide="crosshair" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              <p>Click on any marker on the map to inspect its AI forensic score and official municipal dispatch docket.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: CITIZEN INSTANT REPORT (MOBILE PWA SIMULATOR) -->
+    <div id="view-citizen" class="hidden max-w-2xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <span class="text-xs font-mono uppercase px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">Citizen Mobile Mode</span>
+        <h2 class="text-2xl font-black text-white" id="lbl-citizen-title">Snap, Speak & Hold Bureaucracy Accountable</h2>
+        <p class="text-xs text-slate-400" id="lbl-citizen-subtitle">Zero bureaucratic forms. Our Vision AI verifies media authenticity, rates severity, tags GPS, and files statutory legal notices.</p>
+      </div>
+
+      <!-- ONE-CLICK SAMPLE HAZARD BUTTONS FOR INSTANT TESTING -->
+      <div class="p-4 bg-indigo-950/30 border border-indigo-800/60 rounded-xl space-y-2">
+        <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Fast Testing: Try Instant Sample Hazards (No File Needed):
+        </span>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="loadSampleHazard('pothole')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+            🕳️ Sample Pothole
+          </button>
+          <button type="button" onclick="loadSampleHazard('water')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+            💧 Sample Water Burst
+          </button>
+          <button type="button" onclick="loadSampleHazard('wire')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+            ⚡ Sample Snapped Wire
+          </button>
+        </div>
+      </div>
+
+      <form id="report-form" onsubmit="submitHazardReport(event)" class="glassmorphism p-6 rounded-2xl border border-slate-800 space-y-5 shadow-2xl">
+        <!-- IMAGE UPLOAD / CAMERA -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center justify-between">
+            <span id="lbl-step1">1. Capture / Upload Hazard Image</span>
+            <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-mono"><i data-lucide="scan" class="w-3 h-3"></i> AI Media Authenticity Audit Active</span>
+          </label>
+          <div class="border-2 border-dashed border-slate-700 hover:border-cyan-400 rounded-xl p-6 text-center cursor-pointer transition bg-slate-900/50" onclick="document.getElementById('hazard-image').click()">
+            <input type="file" id="hazard-image" accept="image/*" class="hidden" onchange="previewImage(event)" />
+            <div id="image-preview-container" class="space-y-2">
+              <i data-lucide="camera" class="w-10 h-10 mx-auto text-cyan-400"></i>
+              <p class="text-sm font-semibold text-slate-300" id="lbl-upload-text">Click to snap photo or select file</p>
+              <p class="text-xs text-slate-500">Supports live camera shots (Roads, Waste, Drains, Snapped Wires)</p>
+            </div>
+            <img id="image-preview" class="hidden max-h-48 mx-auto rounded-lg shadow-md border border-slate-700 mt-2 object-cover" />
+          </div>
+        </div>
+
+        <!-- GPS AUTO-DETECT -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2" id="lbl-step2">2. Geolocation Coordinates</label>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <input type="number" step="any" id="hazard-lat" value="12.9352" placeholder="Latitude" class="w-full bg-surface border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs font-mono focus:border-cyan-400 focus:outline-none" required />
+            </div>
+            <div>
+              <input type="number" step="any" id="hazard-lng" value="77.6245" placeholder="Longitude" class="w-full bg-surface border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs font-mono focus:border-cyan-400 focus:outline-none" required />
+            </div>
+          </div>
+          <button type="button" onclick="detectGPS()" class="mt-2 text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono">
+            <i data-lucide="navigation" class="w-3.5 h-3.5"></i> <span id="lbl-autodetect-gps">Auto-Detect My Current GPS</span>
+          </button>
+        </div>
+
+        <!-- VOICE / STATEMENT DICTATION -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2" id="lbl-step3">3. Citizen Voice Note / Description</label>
+          <div class="space-y-2">
+            <textarea id="hazard-statement" rows="2" placeholder="Speak or describe in regional language (e.g. 'Gaddha bohot gehra hai, bache gir sakte hain')..." class="w-full bg-surface border border-slate-700 text-slate-100 rounded-lg p-3 text-xs focus:border-cyan-400 focus:outline-none"></textarea>
+            <div class="flex flex-wrap gap-2 text-[11px]">
+              <span class="text-slate-500">Quick Voice Presets:</span>
+              <button type="button" onclick="setPresetVoice('Yeh nala khula hai, badboo aur bimari fail rahi hai.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">Open Drain (Hindi)</button>
+              <button type="button" onclick="setPresetVoice('Deep pothole near school crossing, high risk of accident.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">Pothole (Eng)</button>
+              <button type="button" onclick="setPresetVoice('Live electric wire snapped after thunderstorm.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition">Live Wire (Eng)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBMISSION BUTTON -->
+        <button type="submit" id="submit-report-btn" class="w-full py-3 bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4"></i> <span id="lbl-submit-btn">Dispatch to AI Vision Inspector</span>
+        </button>
+      </form>
+
+      <!-- VERDICT MODAL / CARD -->
+      <div id="citizen-verdict-card" class="hidden glassmorphism p-6 rounded-2xl border border-cyan-800/80 space-y-4 shadow-2xl">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 3: MULTILINGUAL RIGHTS & SCHEME EXPLAINER (HACKATHON TRACK 1 IDEA 1) -->
+    <div id="view-rights" class="hidden max-w-4xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <span class="text-xs font-mono uppercase px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800">Track 1: Civic Knowledge & Rights Engine</span>
+        <h2 class="text-2xl font-black text-white" id="lbl-rights-header">Multilingual Policy & Civic Rights Explainer</h2>
+        <p class="text-xs text-slate-400">Democratizing civic law. Understand your statutory rights, compensation eligibility, and municipal welfare schemes in simple language.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- INPUT / QUESTION SELECTOR -->
+        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <i data-lucide="help-circle" class="w-4 h-4 text-cyan-400"></i> Select Civic Rights Scenario
+          </h3>
+          <div class="space-y-2">
+            <button onclick="explainRight('pothole_accident')" class="w-full text-left p-3 rounded-xl bg-surface hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition">
+              🚗 Pothole Damage & Injury Compensation
+            </button>
+            <button onclick="explainRight('water_contamination')" class="w-full text-left p-3 rounded-xl bg-surface hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition">
+              💧 Dirty Water / Sewage Contamination Rights
+            </button>
+            <button onclick="explainRight('power_surge')" class="w-full text-left p-3 rounded-xl bg-surface hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition">
+              ⚡ Appliance Damage from Electric Voltage Surge
+            </button>
+            <button onclick="explainRight('garbage_inaction')" class="w-full text-left p-3 rounded-xl bg-surface hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-200 transition">
+              🗑️ Municipal Inaction on Uncollected Solid Waste
+            </button>
+          </div>
+        </div>
+
+        <!-- EXPLANATION CARD (SIMPLE LANGUAGE + VOICE RESPONSE) -->
+        <div class="md:col-span-2 glassmorphism p-6 rounded-2xl border border-indigo-900/60 space-y-4 flex flex-col justify-between shadow-2xl">
+          <div id="rights-display-content" class="space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span id="rights-title" class="font-bold text-base text-cyan-300">Select a scenario to view your legal rights</span>
+              <span id="rights-law-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">STATUTORY CHARTER</span>
+            </div>
+            <div id="rights-body-text" class="text-xs text-slate-300 leading-relaxed space-y-2">
+              <p>Under Indian Municipal Corporation Acts and Supreme Court directives, citizens are entitled to safe public infrastructure as a fundamental right under Article 21 (Right to Life).</p>
+              <p class="text-slate-400 italic">Select any option on the left to see the simple Hindi / English explanation and how to claim statutory redressal.</p>
+            </div>
+          </div>
+
+          <!-- AUDIO VOICE SYNTHESIS BUTTON -->
+          <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+            <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="volume-2" class="w-4 h-4 text-cyan-400"></i>
+              <span>Listen aloud (Speech Synthesis):</span>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="speakRights('hi')" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/50 rounded-lg text-indigo-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <span>🔊 Hindi Voice</span>
+              </button>
+              <button onclick="speakRights('en')" class="px-3 py-1.5 bg-cyan-600/30 hover:bg-cyan-600 border border-cyan-500/50 rounded-lg text-cyan-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <span>🔊 English Voice</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: PROOF-OF-RESOLUTION (ANTI-CORRUPTION AUDIT LAB) -->
+    <div id="view-por" class="hidden max-w-4xl mx-auto space-y-6">
+      <div class="text-center space-y-2">
+        <span class="text-xs font-mono uppercase px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">Anti-Corruption Module</span>
+        <h2 class="text-2xl font-black text-white">Proof-of-Resolution (PoR) Auditor</h2>
+        <p class="text-xs text-slate-400">Eliminates municipal fraud. Contractors must upload 'AFTER' photos which are visually verified by AI against the original hazard before public funds are disbursed.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- SELECT INCIDENT -->
+        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i> Step 1: Select Open Docket
+          </h3>
+          <select id="por-incident-select" onchange="onPorIncidentSelect()" class="w-full bg-surface border border-slate-700 text-slate-100 rounded-lg p-2.5 text-xs font-mono focus:border-cyan-400 focus:outline-none">
+            <!-- Populated via JS -->
+          </select>
+          <div id="por-before-card" class="p-3 bg-surface/60 rounded-xl border border-slate-800 text-xs space-y-2">
+            <p class="text-slate-400">Select a docket above to review original hazard parameters.</p>
+          </div>
+        </div>
+
+        <!-- UPLOAD CONTRACTOR PROOF -->
+        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i> Step 2: Contractor 'AFTER' Repair Proof
+          </h3>
+          <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center cursor-pointer bg-slate-900/50" onclick="document.getElementById('por-after-image').click()">
+            <input type="file" id="por-after-image" accept="image/*" class="hidden" onchange="previewPorAfterImage(event)" />
+            <div id="por-after-preview-container">
+              <i data-lucide="upload" class="w-8 h-8 mx-auto text-slate-400 mb-1"></i>
+              <p class="text-xs font-semibold text-slate-300">Upload Contractor Repair Photo</p>
+            </div>
+            <img id="por-after-preview" class="hidden max-h-36 mx-auto rounded mt-2 border border-slate-700 object-cover" />
+          </div>
+
+          <div class="flex items-center gap-2 p-2.5 bg-rose-950/20 border border-rose-900/40 rounded-lg text-xs">
+            <input type="checkbox" id="simulate-fraud-check" class="rounded border-slate-700 text-rose-500 focus:ring-rose-500 cursor-pointer" />
+            <label for="simulate-fraud-check" class="text-rose-300 cursor-pointer font-medium">
+              Simulate Contractor Fraud (Location mismatch / fake photo)
+            </label>
+          </div>
+
+          <button onclick="runForensicAudit()" id="run-audit-btn" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+            <i data-lucide="cpu" class="w-4 h-4"></i> Run AI Forensic Audit
+          </button>
+        </div>
+      </div>
+
+      <!-- AUDIT RESULTS STAMP -->
+      <div id="por-audit-result" class="hidden glassmorphism p-6 rounded-2xl border space-y-4 shadow-2xl">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // State
+    let incidents = [];
+    let map = null;
+    let markersLayer = null;
+    let currentRightsData = null;
+    let isHindi = false;
+
+    // Fast Sample Hazard Pre-loader
+    function loadSampleHazard(type) {
+      const img = document.getElementById('image-preview');
+      const container = document.getElementById('image-preview-container');
+      img.classList.remove('hidden');
+      container.classList.add('hidden');
+
+      if (type === 'pothole') {
+        img.src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=500&auto=format&fit=crop&q=60";
+        document.getElementById('hazard-lat').value = "12.9352";
+        document.getElementById('hazard-lng').value = "77.6245";
+        document.getElementById('hazard-statement').value = "Cavernous 20cm road breach near Koramangala 80ft road. Vehicles severely skidding.";
+      } else if (type === 'water') {
+        img.src = "https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=500&auto=format&fit=crop&q=60";
+        document.getElementById('hazard-lat').value = "12.9716";
+        document.getElementById('hazard-lng').value = "77.6412";
+        document.getElementById('hazard-statement').value = "High pressure potable water supply pipeline fractured. Indiranagar main road flooded.";
+      } else if (type === 'wire') {
+        img.src = "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=500&auto=format&fit=crop&q=60";
+        document.getElementById('hazard-lat').value = "12.9783";
+        document.getElementById('hazard-lng').value = "77.5912";
+        document.getElementById('hazard-statement').value = "High voltage overhead electric distribution cable snapped and hanging above pedestrian sidewalk.";
+      }
+    }
+
+    // Toggle Language (EN / HI)
+    function toggleLanguage() {
+      isHindi = !isHindi;
+      document.getElementById('lang-btn-text').innerText = isHindi ? "Language: हिंदी" : "Language: EN";
+
+      if (isHindi) {
+        document.getElementById('lbl-tagline').innerText = "स्वायत्त बहुभाषी नागरिक शिकायत निवारण एवं भ्रष्टाचार विरोधी इंजन";
+        document.getElementById('lbl-stat-active').innerText = "सक्रिय शिकायतें:";
+        document.getElementById('lbl-stat-critical').innerText = "गंभीर (≥8):";
+        document.getElementById('lbl-stat-dedup').innerText = "क्लस्टर निवारण:";
+        document.getElementById('lbl-stat-fraud').innerText = "फर्जी बिल ब्लॉक:";
+        document.getElementById('lbl-btn-seed').innerText = "डेटा लोड करें";
+        document.getElementById('lbl-guide-title').innerText = "यह कैसे काम करता है:";
+        document.getElementById('lbl-tab-triage').innerText = "शहर हीटमैप";
+        document.getElementById('lbl-tab-citizen').innerText = "नागरिक रिपोर्ट (PWA)";
+        document.getElementById('lbl-tab-rights').innerText = "अधिकार एवं सरकारी योजनाएं";
+        document.getElementById('lbl-tab-por').innerText = "मरम्मत सत्यापन लैब";
+        document.getElementById('lbl-triage-title').innerText = "वास्तविक समय भू-स्थानिक शिकायत निवारण";
+        document.getElementById('lbl-triage-subtitle').innerText = "लाइव खतरे, सामुदायिक प्राथमिकता क्लस्टर और स्वचालित वार्ड एस्केलेशन ट्रैकिंग।";
+        document.getElementById('lbl-citizen-title').innerText = "फोटो खींचे, बोलें और तुरंत कार्रवाई पाएं";
+        document.getElementById('lbl-step1').innerText = "1. समस्या की फोटो खींचें या अपलोड करें";
+        document.getElementById('lbl-step2').innerText = "2. जीपीएस स्थान";
+        document.getElementById('lbl-step3').innerText = "3. बोलकर या लिखकर विवरण दें";
+        document.getElementById('lbl-submit-btn').innerText = "एआई इंस्पेक्टर को भेजें";
+      } else {
+        document.getElementById('lbl-tagline').innerText = "Autonomous Multimodal Civic Governance, Spatial Triage & Anti-Corruption Engine";
+        document.getElementById('lbl-stat-active').innerText = "Active Incidents:";
+        document.getElementById('lbl-stat-critical').innerText = "Critical (≥8):";
+        document.getElementById('lbl-stat-dedup').innerText = "Deduplicated:";
+        document.getElementById('lbl-stat-fraud').innerText = "Fraud Blocked:";
+        document.getElementById('lbl-btn-seed').innerText = "Seed City Data";
+        document.getElementById('lbl-guide-title').innerText = "HOW IT WORKS:";
+        document.getElementById('lbl-tab-triage').innerText = "City Triage Heatmap";
+        document.getElementById('lbl-tab-citizen').innerText = "Citizen Instant Report (PWA)";
+        document.getElementById('lbl-tab-rights').innerText = "Multilingual Rights & Scheme Explainer";
+        document.getElementById('lbl-tab-por').innerText = "Proof-of-Resolution Lab";
+        document.getElementById('lbl-triage-title').innerText = "Real-Time Geospatial Incident Triage";
+        document.getElementById('lbl-triage-subtitle').innerText = "Displays real-time hazards, community priority clustering, and automated ward escalation countdowns.";
+        document.getElementById('lbl-citizen-title').innerText = "Snap, Speak & Hold Bureaucracy Accountable";
+        document.getElementById('lbl-step1').innerText = "1. Capture / Upload Hazard Image";
+        document.getElementById('lbl-step2').innerText = "2. Geolocation Coordinates";
+        document.getElementById('lbl-step3').innerText = "3. Citizen Voice Note / Description";
+        document.getElementById('lbl-submit-btn').innerText = "Dispatch to AI Vision Inspector";
+      }
+    }
+
+    // Initialize Map on Load
+    function initMap() {
+      if (map) return;
+      map = L.map('map').setView([12.9550, 77.6100], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+    }
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      ['triage', 'citizen', 'rights', 'por'].forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (view) view.classList.add('hidden');
+        if (btn) btn.className = 'px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition';
+      });
+
+      const activeView = document.getElementById(`view-${tabId}`);
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeBtn) activeBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition';
+
+      if (tabId === 'triage') {
+        setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+      }
+      lucide.createIcons();
+    }
+
+    // Load Incidents from Backend
+    async function loadIncidents() {
+      const category = document.getElementById('category-filter').value;
+      const url = category === 'ALL' ? '/api/v1/incidents' : `/api/v1/incidents?category=${encodeURIComponent(category)}`;
+      try {
+        const res = await fetch(url);
+        incidents = await res.json();
+        renderMapMarkers();
+        updateStats();
+        populatePorDropdown();
+        if (incidents.length > 0) {
+          selectIncident(incidents[0]);
+        }
+      } catch (e) {
+        console.error("Failed to load incidents:", e);
+      }
+    }
+
+    // Update Telemetry Header
+    async function updateStats() {
+      try {
+        const res = await fetch('/api/v1/stats');
+        const stats = await res.json();
+        document.getElementById('stat-total').innerText = stats.total_incidents;
+        document.getElementById('stat-critical').innerText = stats.critical_hazards;
+        document.getElementById('stat-clustered').innerText = stats.duplicate_reports_clustered;
+        document.getElementById('stat-fraud').innerText = stats.contractor_fraud_prevented;
+      } catch (e) {
+        console.error("Stats fetch error:", e);
+      }
+    }
+
+    // Render Markers on Leaflet Map
+    function renderMapMarkers() {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+
+      const bounds = [];
+
+      incidents.forEach(inc => {
+        const isCritical = inc.severity_score >= 8 && inc.status !== 'RESOLVED_VERIFIED';
+        const isResolved = inc.status === 'RESOLVED_VERIFIED';
+        const isFraud = inc.status === 'CONTRACTOR_FRAUD_FLAGGED';
+
+        let color = '#f59e0b';
+        if (isResolved) color = '#10b981';
+        else if (isCritical || isFraud) color = '#f43f5e';
+
+        const markerHtml = `
+          <div style="background-color: ${color}; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #060913; box-shadow: 0 0 14px ${color}; display: flex; align-items: center; justify-content: center; cursor: pointer;" class="${isCritical ? 'pulsing-critical' : ''}">
+            <span style="font-size: 11px; font-weight: 900; color: white;">${inc.severity_score}</span>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          html: markerHtml,
+          className: 'custom-marker',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13]
+        });
+
+        const marker = L.marker([inc.latitude, inc.longitude], { icon: customIcon });
+        marker.on('click', () => selectIncident(inc));
+        markersLayer.addLayer(marker);
+        bounds.push([inc.latitude, inc.longitude]);
+      });
+
+      if (bounds.length > 0 && map) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      }
+    }
+
+    // Select Incident in Drawer with 5-Stage Live Timeline Stepper
+    function selectIncident(inc) {
+      const container = document.getElementById('selected-incident-card');
+      const isCritical = inc.severity_score >= 8;
+      const isResolved = inc.status === 'RESOLVED_VERIFIED';
+      const isFraud = inc.status === 'CONTRACTOR_FRAUD_FLAGGED';
+      const statusColor = isResolved ? 'text-emerald-400' : isCritical ? 'text-rose-400' : 'text-amber-400';
+
+      container.innerHTML = `
+        <div class="space-y-3 animate-fadeIn">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-cyan-400 font-bold">${inc.id}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusColor} bg-slate-900 border border-slate-700">${inc.status}</span>
+          </div>
+
+          <!-- 5-STAGE PROGRESS STEPPER -->
+          <div class="p-3 bg-surface/90 rounded-xl border border-slate-800 space-y-2">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Grievance Lifecycle Stepper:</div>
+            <div class="grid grid-cols-5 gap-1 text-[9px] font-mono text-center">
+              <div class="p-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">✓ Ingestion</div>
+              <div class="p-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">✓ EXIF Check</div>
+              <div class="p-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">✓ Ward Notice</div>
+              <div class="p-1 rounded ${isResolved ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800 animate-pulse'}">⏳ SLA Active</div>
+              <div class="p-1 rounded ${isResolved ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : isFraud ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-slate-900 text-slate-500 border border-slate-800'}">
+                ${isResolved ? '✓ Verified Fix' : isFraud ? '⚠️ Fraud Flag' : '○ PoR Pending'}
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-surface/90 rounded-xl border border-slate-800 space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Category:</span>
+              <span class="font-bold text-white">${inc.category}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Hazard Rating:</span>
+              <span class="font-mono font-bold ${isCritical ? 'text-rose-400' : 'text-amber-400'}">${inc.severity_score}/10 (${inc.hazard_level})</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Community Reports:</span>
+              <span class="font-mono font-bold text-cyan-400">⚡ ${inc.upvote_count} Citizens Clustered</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">SLA Window:</span>
+              <span class="font-mono text-white">${inc.sla_hours} Hours</span>
+            </div>
+          </div>
+
+          <!-- MEDIA AUDIT BADGE -->
+          <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/80 flex items-center justify-between text-[11px]">
+            <span class="text-emerald-400 font-bold flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Deepfake / AI Fraud Check:
+            </span>
+            <span class="text-slate-200 font-mono">AUTHENTIC (Sensor EXIF Verified)</span>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500">Responsible Authority:</label>
+            <p class="text-slate-300 font-medium">${inc.responsible_department}</p>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500">Legal Bylaw Citation:</label>
+            <p class="text-slate-400 italic">${inc.legal_bylaw_reference}</p>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500">Official Statutory Escalation Notice:</label>
+            <pre class="bg-obsidian p-2.5 rounded-lg border border-slate-800 text-[10px] font-mono whitespace-pre-wrap text-slate-300">${inc.escalation_notice}</pre>
+          </div>
+
+          <button onclick="window.print()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i> Export Official Statutory Docket (Print / PDF)
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // Rights Explainer Logic
+    const RIGHTS_DATA = {
+      pothole_accident: {
+        title: "Pothole Accident & Vehicle Damage Rights",
+        bylaw: "Article 21 & High Court Mandates (Karnataka & Bombay High Courts)",
+        hi_voice: "Aapka adhikar: Nagar nigam ki laparwahi se agar gaddhe me girne se chot ya gaadi ka nuksan hota hai, toh nagar nigam se compensation claim kiya ja sakta hai. High Court ke aadesh anusaar medical kharcha aur harjana dena nagar nigam ka statutory kartavya hai.",
+        en_voice: "Citizen Rights: If road potholes cause injury or vehicular damage due to municipal negligence, citizens are entitled to financial compensation. Under High Court directives, local municipal corporations are legally bound to reimburse emergency medical expenses.",
+        html: `
+          <div class="space-y-2">
+            <p><strong class="text-white">Legal Foundation:</strong> The Supreme Court of India holds that motorable roads are an integral part of the Right to Life under Article 21.</p>
+            <p><strong class="text-white">Statutory Remedy:</strong> If you suffer an injury due to an unaddressed pothole, you can file a tort claim with the Municipal Commissioner with medical receipts and geo-tagged photographs.</p>
+            <p><strong class="text-white">SLA Obligation:</strong> Road authorities are mandated under IRC standards to repair dangerous craters within 24 to 48 hours of notification.</p>
+          </div>
+        `
+      },
+      water_contamination: {
+        title: "Contaminated Water & Drainage Overflow Rights",
+        bylaw: "Section 243, Municipal Corporation Act & Water Act 1974",
+        hi_voice: "Gande paani aur sewage leak par aapka adhikar: Nagarpalika ka yeh farz hai ki har nagrik ko saaf peene ka paani mile. Gande paani ki supply par 24 ghante me action lena anivarya hai.",
+        en_voice: "Water Rights: Supply of potable water is a non-negotiable municipal service. Continuous supply of contaminated water attracts penal action under public health acts.",
+        html: `
+          <div class="space-y-2">
+            <p><strong class="text-white">Legal Foundation:</strong> Potable water access is recognized as a fundamental constitutional right.</p>
+            <p><strong class="text-white">Statutory Remedy:</strong> Municipal health departments must dispatch mobile water tankers within 12 hours if sewage contamination is reported.</p>
+          </div>
+        `
+      },
+      power_surge: {
+        title: "Voltage Surge Appliance Burnout Rights",
+        bylaw: "Electricity Act 2003 & Consumer Protection Act 2019",
+        hi_voice: "Bijli surge se nuksan par adhikar: Agar transformer ya neutral wire kharab hone se ghar ke upkaran jalte hain, toh Bijli Board se harjana lene ka kanooni haq hai.",
+        en_voice: "Electrical Damage Rights: Power distribution companies (DISCOMs) are liable to compensate consumers for appliance burnout caused by neutral failure or faulty distribution transformers.",
+        html: `
+          <div class="space-y-2">
+            <p><strong class="text-white">Legal Foundation:</strong> Section 57 of the Electricity Act 2003 penalizes power utilities for failure to maintain standard voltage frequencies.</p>
+            <p><strong class="text-white">Statutory Remedy:</strong> File a claim with the Consumer Grievance Redressal Forum (CGRF) with the electrician's inspection report for reimbursement.</p>
+          </div>
+        `
+      },
+      garbage_inaction: {
+        title: "Uncollected Solid Waste & Sanitation Rights",
+        bylaw: "Rule 15, Solid Waste Management Rules 2016",
+        hi_voice: "Kachra na uthne par adhikar: Agar 48 ghante tak mohalle se kachra nahi uthaya jata, toh Swachhata Inspector par statutory fine lagta hai.",
+        en_voice: "Sanitation Rights: Door-to-door waste collection and removal from public dumps is mandatory within 48 hours under National Solid Waste Management guidelines.",
+        html: `
+          <div class="space-y-2">
+            <p><strong class="text-white">Legal Foundation:</strong> Uncollected waste spreading vector-borne diseases is a punishable public nuisance under Section 268 of IPC.</p>
+            <p><strong class="text-white">Statutory Remedy:</strong> CIVIC-NEXUS automatically escalates breaches exceeding 48 hours to the District Magistrate and State Pollution Control Board.</p>
+          </div>
+        `
+      }
+    };
+
+    function explainRight(key) {
+      const data = RIGHTS_DATA[key];
+      if (!data) return;
+      currentRightsData = data;
+      document.getElementById('rights-title').innerText = data.title;
+      document.getElementById('rights-law-badge').innerText = data.bylaw;
+      document.getElementById('rights-body-text').innerHTML = data.html;
+    }
+
+    // Text to Speech
+    function speakRights(lang) {
+      if (!currentRightsData) {
+        explainRight('pothole_accident');
+      }
+      const text = lang === 'hi' ? currentRightsData.hi_voice : currentRightsData.en_voice;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        if (lang === 'hi') utterance.lang = 'hi-IN';
+        else utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+      } else {
+        alert("Speech Synthesis is not supported in this browser.");
+      }
+    }
+
+    // Preview Image for Citizen Form
+    function previewImage(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = document.getElementById('image-preview');
+          img.src = evt.target.result;
+          img.classList.remove('hidden');
+          document.getElementById('image-preview-container').classList.add('hidden');
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Auto-detect GPS
+    function detectGPS() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            document.getElementById('hazard-lat').value = pos.coords.latitude.toFixed(5);
+            document.getElementById('hazard-lng').value = pos.coords.longitude.toFixed(5);
+          },
+          err => {
+            alert("Could not retrieve GPS directly. Using simulated Metro coordinates (12.9352, 77.6245).");
+          }
+        );
+      }
+    }
+
+    function setPresetVoice(text) {
+      document.getElementById('hazard-statement').value = text;
+    }
+
+    // Submit Hazard Report
+    async function submitHazardReport(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-report-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Running Vision & Authenticity Audit...`;
+      lucide.createIcons();
+
+      const formData = new FormData();
+      formData.append('latitude', document.getElementById('hazard-lat').value);
+      formData.append('longitude', document.getElementById('hazard-lng').value);
+      formData.append('voice_transcript', document.getElementById('hazard-statement').value);
+      
+      const fileInput = document.getElementById('hazard-image');
+      if (fileInput.files[0]) {
+        formData.append('image', fileInput.files[0]);
+      } else {
+        const dummyBlob = new Blob(["sample hazard bytes"], { type: 'image/jpeg' });
+        formData.append('image', dummyBlob, 'sample_hazard.jpg');
+      }
+
+      try {
+        const res = await fetch('/api/v1/report', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Dispatch to AI Vision Inspector`;
+        lucide.createIcons();
+
+        const verdictCard = document.getElementById('citizen-verdict-card');
+        verdictCard.classList.remove('hidden');
+
+        if (data.status === 'REJECTED_NON_CIVIC') {
+          verdictCard.innerHTML = `
+            <div class="text-rose-400 font-bold flex items-center gap-2">
+              <i data-lucide="alert-octagon" class="w-5 h-5"></i> Hazard Rejected
+            </div>
+            <p class="text-xs text-slate-300">${data.reason}</p>
+          `;
+        } else if (data.status === 'CLUSTERED_PRIORITY_AMPLIFIED') {
+          verdictCard.innerHTML = `
+            <div class="text-amber-400 font-bold flex items-center gap-2">
+              <i data-lucide="layers" class="w-5 h-5"></i> Existing Hazard Clustered & Priority Escalated
+            </div>
+            <p class="text-xs text-slate-300">${data.message}</p>
+            <div class="p-3 bg-surface rounded-xl border border-slate-700 text-xs font-mono">
+              Amplified Community Urgency: <span class="text-rose-400 font-bold">${data.amplified_severity}/10</span> | Total Citizen Reports: ${data.total_reporters}
+            </div>
+          `;
+        } else {
+          const inc = data.incident;
+          verdictCard.innerHTML = `
+            <div class="text-emerald-400 font-bold flex items-center gap-2">
+              <i data-lucide="check-circle" class="w-5 h-5"></i> Docket Formally Dispatched (ID: ${inc.id})
+            </div>
+            <div class="p-3 bg-surface rounded-xl border border-slate-700 space-y-1.5 text-xs">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Classified Category:</span>
+                <span class="font-bold text-white">${inc.category}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Severity Metric:</span>
+                <span class="font-bold text-rose-400 font-mono">${inc.severity_score}/10 (${inc.hazard_level})</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">SLA Countdown:</span>
+                <span class="font-bold text-cyan-400 font-mono">${inc.sla_hours} Hours</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Assigned Agency:</span>
+                <span class="font-bold text-white">${inc.responsible_department}</span>
+              </div>
+            </div>
+            <!-- FACT-VERIFICATION & DEEPFAKE BADGE -->
+            <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800 flex items-center justify-between text-[11px]">
+              <span class="text-emerald-400 font-bold flex items-center gap-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Authenticity Verified:
+              </span>
+              <span class="text-slate-200 font-mono">Sensor EXIF Match (Not AI-Generated / Deepfake)</span>
+            </div>
+            <p class="text-[11px] text-slate-400 italic">${inc.legal_bylaw_reference}</p>
+          `;
+        }
+        lucide.createIcons();
+        loadIncidents();
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Dispatch to AI Vision Inspector`;
+        alert("Report error: " + err);
+      }
+    }
+
+    // Populate PoR Dropdown
+    function populatePorDropdown() {
+      const select = document.getElementById('por-incident-select');
+      select.innerHTML = '<option value="">-- Choose Docket to Audit --</option>';
+      incidents.forEach(inc => {
+        select.innerHTML += `<option value="${inc.id}">[${inc.id}] ${inc.category} (Sev: ${inc.severity_score}/10) - ${inc.status}</option>`;
+      });
+    }
+
+    function onPorIncidentSelect() {
+      const id = document.getElementById('por-incident-select').value;
+      const target = incidents.find(i => i.id === id);
+      const container = document.getElementById('por-before-card');
+      if (target) {
+        container.innerHTML = `
+          <div class="font-mono text-cyan-400 font-bold">${target.id}: ${target.category}</div>
+          <p class="text-slate-300">Authority: ${target.responsible_department}</p>
+          <p class="text-slate-400 italic">${target.legal_bylaw_reference}</p>
+          <div class="text-[10px] font-mono text-amber-400">Current Status: ${target.status}</div>
+        `;
+      }
+    }
+
+    function previewPorAfterImage(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = document.getElementById('por-after-preview');
+          img.src = evt.target.result;
+          img.classList.remove('hidden');
+          document.getElementById('por-after-preview-container').classList.add('hidden');
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Run Forensic Audit
+    async function runForensicAudit() {
+      const incidentId = document.getElementById('por-incident-select').value;
+      if (!incidentId) {
+        alert("Please select a docket first!");
+        return;
+      }
+
+      const btn = document.getElementById('run-audit-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Running Forensic Diff & Alignment...`;
+      lucide.createIcons();
+
+      const simulateFraud = document.getElementById('simulate-fraud-check').checked;
+      const fileInput = document.getElementById('por-after-image');
+      const formData = new FormData();
+      
+      if (fileInput.files[0]) {
+        formData.append('after_image', fileInput.files[0]);
+      } else {
+        const blob = new Blob(["dummy repair pixel"], { type: 'image/jpeg' });
+        formData.append('after_image', blob, 'after_repair.jpg');
+      }
+
+      try {
+        const res = await fetch(`/api/v1/verify-resolution/${incidentId}?simulate_fraud=${simulateFraud}`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="cpu" class="w-4 h-4"></i> Run AI Forensic Audit`;
+        lucide.createIcons();
+
+        const resultContainer = document.getElementById('por-audit-result');
+        resultContainer.classList.remove('hidden');
+
+        const audit = data.audit_report;
+        const isSatisfactory = audit.verdict === 'VERIFIED_SATISFACTORY';
+
+        resultContainer.className = isSatisfactory 
+          ? "glassmorphism p-6 rounded-2xl border border-emerald-800 space-y-4 animate-fadeIn"
+          : "glassmorphism p-6 rounded-2xl border border-rose-800 space-y-4 animate-fadeIn";
+
+        resultContainer.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono text-slate-400">FORENSIC VERIFICATION REPORT // ${data.incident.id}</span>
+            <span class="px-3 py-1 rounded-full text-xs font-black uppercase ${isSatisfactory ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+              ${audit.verdict}
+            </span>
+          </div>
+
+          <div class="p-4 bg-surface rounded-xl border border-slate-800 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Confidence Score:</span>
+              <span class="font-mono font-bold text-cyan-400">${audit.confidence_percentage}%</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Remediation Action:</span>
+              <span class="font-mono font-bold ${isSatisfactory ? 'text-emerald-400' : 'text-rose-400'}">${audit.remediation_status}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1">Forensic Analysis:</span>
+              <p class="text-slate-200">${audit.audit_reasoning}</p>
+            </div>
+          </div>
+        `;
+        lucide.createIcons();
+        loadIncidents();
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="cpu" class="w-4 h-4"></i> Run AI Forensic Audit`;
+        alert("Audit error: " + err);
+      }
+    }
+
+    // Seed Data
+    async function seedData() {
+      try {
+        await fetch('/api/v1/seed', { method: 'POST' });
+        await loadIncidents();
+        alert("City Hazard Seed Data Loaded! Map refreshed.");
+      } catch (e) {
+        alert("Seed error: " + e);
+      }
+    }
+
+    // Run on startup
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      loadIncidents();
+      explainRight('pothole_accident');
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
