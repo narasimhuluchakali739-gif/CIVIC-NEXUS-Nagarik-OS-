@@ -13,12 +13,12 @@
       theme: {
         extend: {
           colors: {
-            obsidian: '#060913',
-            cardbg: '#0d1322',
-            surface: '#131b2e',
-            bordercol: '#1e293b',
-            electric: '#4f46e5',
-            cyanGlow: '#06b6d4',
+            obsidian: '#050811',
+            cardbg: '#0c1222',
+            surface: '#111827',
+            bordercol: '#1f293d',
+            electric: '#6366f1',
+            neonCyan: '#06b6d4',
             sirenRed: '#f43f5e',
             hazardAmber: '#f59e0b',
             pureGreen: '#10b981'
@@ -37,7 +37,8 @@
 
   <style>
     body {
-      background: radial-gradient(circle at 50% 0%, #111a33 0%, #060913 75%);
+      background: radial-gradient(circle at 50% 0%, #131d38 0%, #050811 80%);
+      background-attachment: fixed;
     }
     .custom-marker {
       background: none !important;
@@ -47,20 +48,35 @@
       filter: brightness(0.6) invert(1) contrast(3.5) hue-rotate(205deg) saturate(0.2) brightness(0.85);
     }
     @keyframes pulse-ring {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.8); }
-      70% { transform: scale(1.15); box-shadow: 0 0 0 12px rgba(244, 63, 94, 0); }
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.85); }
+      70% { transform: scale(1.25); box-shadow: 0 0 0 16px rgba(244, 63, 94, 0); }
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
     }
     .pulsing-critical {
-      animation: pulse-ring 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+      animation: pulse-ring 1.6s infinite cubic-bezier(0.4, 0, 0.6, 1);
     }
     .glassmorphism {
-      background: rgba(13, 19, 34, 0.8);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      background: rgba(12, 18, 34, 0.82);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(99, 102, 241, 0.18);
+      box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
-    #map { height: 560px; z-index: 10; border-radius: 0.75rem; }
+    .glow-border {
+      position: relative;
+    }
+    .glow-border::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(99, 102, 241, 0.2), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    #map { height: 570px; z-index: 10; border-radius: 1rem; }
     
     @media print {
       body * { visibility: hidden; }
@@ -69,24 +85,30 @@
     }
   </style>
 </head>
-<body class="bg-obsidian text-slate-100 min-h-screen font-sans flex flex-col">
+<body class="bg-obsidian text-slate-100 min-h-screen font-sans flex flex-col selection:bg-cyan-500 selection:text-black">
 
-  <!-- TOP APP BAR -->
-  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-    <div class="flex items-center space-x-3">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+  <!-- TOP APP BAR / TELEMETRY HUD -->
+  <header class="border-b border-indigo-950/80 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3.5">
+      <div class="h-11 w-11 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-fuchsia-600 flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20">
         <i data-lucide="shield-alert" class="w-6 h-6"></i>
       </div>
       <div>
-        <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-indigo-300 to-white bg-clip-text text-transparent flex items-center gap-2">
-          CIVIC-NEXUS <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950/80 text-cyan-400 border border-indigo-700/60 font-mono tracking-widest">GOV-OS 2.0</span>
+        <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-cyan-300 via-indigo-200 to-white bg-clip-text text-transparent flex items-center gap-2">
+          CIVIC-NEXUS <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950/90 text-cyan-300 border border-indigo-700/80 font-mono tracking-widest shadow-inner">PALANTIR-GOV 2.5</span>
         </h1>
         <p id="lbl-tagline" class="text-xs text-slate-400">Autonomous Multimodal Civic Governance, Spatial Triage & Anti-Corruption Engine</p>
       </div>
     </div>
 
-    <!-- LANGUAGE SWITCHER + LIVE TELEMETRY STATS -->
-    <div class="flex items-center space-x-3 text-xs font-mono">
+    <!-- LIVE TELEMETRY STATS & TAXPAYER SAVINGS -->
+    <div class="flex items-center space-x-2.5 text-xs font-mono">
+      <!-- TAXPAYER SAVED BADGE -->
+      <div class="bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm text-emerald-300">
+        <i data-lucide="badge-dollar-sign" class="w-4 h-4 text-emerald-400"></i>
+        <span>₹18.5L Taxpayer Funds Saved</span>
+      </div>
+
       <!-- LANGUAGE TOGGLE -->
       <button onclick="toggleLanguage()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-cyan-400 font-bold flex items-center gap-1.5 transition">
         <i data-lucide="globe" class="w-3.5 h-3.5"></i>
@@ -120,11 +142,11 @@
     </div>
   </header>
 
-  <!-- USER HOW-IT-WORKS STEPPER BANNER -->
-  <div class="bg-gradient-to-r from-indigo-950/40 via-surface/60 to-indigo-950/40 border-b border-slate-800/80 px-6 py-2.5">
+  <!-- HOW-IT-WORKS STEPPER BANNER -->
+  <div class="bg-gradient-to-r from-indigo-950/50 via-surface/80 to-indigo-950/50 border-b border-indigo-950/80 px-6 py-2.5">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-3">
       <div class="flex items-center gap-2 text-cyan-400 font-bold">
-        <i data-lucide="info" class="w-4 h-4"></i>
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
         <span id="lbl-guide-title">HOW IT WORKS:</span>
       </div>
       <div class="flex flex-wrap items-center gap-4 text-slate-300">
@@ -136,22 +158,22 @@
         <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
         <span class="flex items-center gap-1.5"><span class="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">4</span> Contractor Proof-of-Resolution</span>
       </div>
-      <span class="text-[11px] text-slate-400 font-mono">SLA Mandate: 12-48h</span>
+      <span class="text-[11px] text-cyan-300 font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800">SLA Mandate: 12-48h</span>
     </div>
   </div>
 
   <!-- NAVIGATION TABS -->
-  <div class="border-b border-slate-800 bg-slate-900/60 px-6 py-2.5 flex space-x-2">
-    <button onclick="switchTab('triage')" id="tab-btn-triage" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition">
+  <div class="border-b border-slate-800/80 bg-slate-900/60 px-6 py-2.5 flex space-x-2">
+    <button onclick="switchTab('triage')" id="tab-btn-triage" class="px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition">
       <i data-lucide="map" class="w-4 h-4"></i> <span id="lbl-tab-triage">City Triage Heatmap</span>
     </button>
-    <button onclick="switchTab('citizen')" id="tab-btn-citizen" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+    <button onclick="switchTab('citizen')" id="tab-btn-citizen" class="px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
       <i data-lucide="camera" class="w-4 h-4"></i> <span id="lbl-tab-citizen">Citizen Instant Report (PWA)</span>
     </button>
-    <button onclick="switchTab('rights')" id="tab-btn-rights" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+    <button onclick="switchTab('rights')" id="tab-btn-rights" class="px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
       <i data-lucide="book-open" class="w-4 h-4"></i> <span id="lbl-tab-rights">Multilingual Rights & Scheme Explainer</span>
     </button>
-    <button onclick="switchTab('por')" id="tab-btn-por" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
+    <button onclick="switchTab('por')" id="tab-btn-por" class="px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition">
       <i data-lucide="check-check" class="w-4 h-4"></i> <span id="lbl-tab-por">Proof-of-Resolution Lab</span>
     </button>
   </div>
@@ -182,12 +204,12 @@
 
       <!-- MAP CONTAINER & DETAIL DRAWER -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 glassmorphism p-2 rounded-2xl border border-slate-800 shadow-2xl">
+        <div class="lg:col-span-2 glassmorphism glow-border p-2 rounded-2xl shadow-2xl">
           <div id="map"></div>
         </div>
 
         <!-- RIGHT INCIDENT FEED / INSPECTOR -->
-        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 flex flex-col h-[560px] shadow-2xl">
+        <div class="glassmorphism glow-border p-5 rounded-2xl flex flex-col h-[570px] shadow-2xl">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
             <span class="flex items-center gap-1.5"><i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i> <span id="lbl-docket-inspector">Docket Inspector</span></span>
             <span class="text-[10px] text-cyan-400 font-mono bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/80">LIVE FEED</span>
@@ -217,19 +239,19 @@
           <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Fast Testing: Try Instant Sample Hazards (No File Needed):
         </span>
         <div class="grid grid-cols-3 gap-2">
-          <button type="button" onclick="loadSampleHazard('pothole')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+          <button type="button" onclick="loadSampleHazard('pothole')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center shadow-sm">
             🕳️ Sample Pothole
           </button>
-          <button type="button" onclick="loadSampleHazard('water')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+          <button type="button" onclick="loadSampleHazard('water')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center shadow-sm">
             💧 Sample Water Burst
           </button>
-          <button type="button" onclick="loadSampleHazard('wire')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center">
+          <button type="button" onclick="loadSampleHazard('wire')" class="p-2 bg-surface hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition text-center shadow-sm">
             ⚡ Sample Snapped Wire
           </button>
         </div>
       </div>
 
-      <form id="report-form" onsubmit="submitHazardReport(event)" class="glassmorphism p-6 rounded-2xl border border-slate-800 space-y-5 shadow-2xl">
+      <form id="report-form" onsubmit="submitHazardReport(event)" class="glassmorphism glow-border p-6 rounded-2xl space-y-5 shadow-2xl">
         <!-- IMAGE UPLOAD / CAMERA -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center justify-between">
@@ -278,18 +300,18 @@
         </div>
 
         <!-- SUBMISSION BUTTON -->
-        <button type="submit" id="submit-report-btn" class="w-full py-3 bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+        <button type="submit" id="submit-report-btn" class="w-full py-3.5 bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
           <i data-lucide="sparkles" class="w-4 h-4"></i> <span id="lbl-submit-btn">Dispatch to AI Vision Inspector</span>
         </button>
       </form>
 
       <!-- VERDICT MODAL / CARD -->
-      <div id="citizen-verdict-card" class="hidden glassmorphism p-6 rounded-2xl border border-cyan-800/80 space-y-4 shadow-2xl">
+      <div id="citizen-verdict-card" class="hidden glassmorphism glow-border p-6 rounded-2xl space-y-4 shadow-2xl">
         <!-- Rendered dynamically via JS -->
       </div>
     </div>
 
-    <!-- VIEW 3: MULTILINGUAL RIGHTS & SCHEME EXPLAINER (HACKATHON TRACK 1 IDEA 1) -->
+    <!-- VIEW 3: MULTILINGUAL RIGHTS & SCHEME EXPLAINER -->
     <div id="view-rights" class="hidden max-w-4xl mx-auto space-y-6">
       <div class="text-center space-y-2">
         <span class="text-xs font-mono uppercase px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800">Track 1: Civic Knowledge & Rights Engine</span>
@@ -299,7 +321,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- INPUT / QUESTION SELECTOR -->
-        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div class="glassmorphism glow-border p-5 rounded-2xl space-y-4">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <i data-lucide="help-circle" class="w-4 h-4 text-cyan-400"></i> Select Civic Rights Scenario
           </h3>
@@ -320,7 +342,7 @@
         </div>
 
         <!-- EXPLANATION CARD (SIMPLE LANGUAGE + VOICE RESPONSE) -->
-        <div class="md:col-span-2 glassmorphism p-6 rounded-2xl border border-indigo-900/60 space-y-4 flex flex-col justify-between shadow-2xl">
+        <div class="md:col-span-2 glassmorphism glow-border p-6 rounded-2xl space-y-4 flex flex-col justify-between shadow-2xl">
           <div id="rights-display-content" class="space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
               <span id="rights-title" class="font-bold text-base text-cyan-300">Select a scenario to view your legal rights</span>
@@ -361,7 +383,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- SELECT INCIDENT -->
-        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+        <div class="glassmorphism glow-border p-5 rounded-2xl space-y-4 shadow-xl">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
             <i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i> Step 1: Select Open Docket
           </h3>
@@ -374,7 +396,7 @@
         </div>
 
         <!-- UPLOAD CONTRACTOR PROOF -->
-        <div class="glassmorphism p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+        <div class="glassmorphism glow-border p-5 rounded-2xl space-y-4 shadow-xl">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
             <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i> Step 2: Contractor 'AFTER' Repair Proof
           </h3>
@@ -401,7 +423,7 @@
       </div>
 
       <!-- AUDIT RESULTS STAMP -->
-      <div id="por-audit-result" class="hidden glassmorphism p-6 rounded-2xl border space-y-4 shadow-2xl">
+      <div id="por-audit-result" class="hidden glassmorphism glow-border p-6 rounded-2xl border space-y-4 shadow-2xl">
         <!-- Rendered dynamically -->
       </div>
     </div>
@@ -415,6 +437,7 @@
     let markersLayer = null;
     let currentRightsData = null;
     let isHindi = false;
+    let slaTimerInterval = null;
 
     // Fast Sample Hazard Pre-loader
     function loadSampleHazard(type) {
@@ -505,13 +528,13 @@
         const view = document.getElementById(`view-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
         if (view) view.classList.add('hidden');
-        if (btn) btn.className = 'px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition';
+        if (btn) btn.className = 'px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800 transition';
       });
 
       const activeView = document.getElementById(`view-${tabId}`);
       const activeBtn = document.getElementById(`tab-btn-${tabId}`);
       if (activeView) activeView.classList.remove('hidden');
-      if (activeBtn) activeBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold tracking-wide flex items-center gap-2 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition';
+      if (activeBtn) activeBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition';
 
       if (tabId === 'triage') {
         setTimeout(() => { if (map) map.invalidateSize(); }, 200);
@@ -568,7 +591,7 @@
         else if (isCritical || isFraud) color = '#f43f5e';
 
         const markerHtml = `
-          <div style="background-color: ${color}; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #060913; box-shadow: 0 0 14px ${color}; display: flex; align-items: center; justify-content: center; cursor: pointer;" class="${isCritical ? 'pulsing-critical' : ''}">
+          <div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #050811; box-shadow: 0 0 16px ${color}; display: flex; align-items: center; justify-content: center; cursor: pointer;" class="${isCritical ? 'pulsing-critical' : ''}">
             <span style="font-size: 11px; font-weight: 900; color: white;">${inc.severity_score}</span>
           </div>
         `;
@@ -576,8 +599,8 @@
         const customIcon = L.divIcon({
           html: markerHtml,
           className: 'custom-marker',
-          iconSize: [26, 26],
-          iconAnchor: [13, 13]
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
         });
 
         const marker = L.marker([inc.latitude, inc.longitude], { icon: customIcon });
@@ -591,7 +614,26 @@
       }
     }
 
-    // Select Incident in Drawer with 5-Stage Live Timeline Stepper
+    // Live Ticking SLA Countdown
+    function startSlaTimer(targetHours) {
+      if (slaTimerInterval) clearInterval(slaTimerInterval);
+      let remainingSeconds = targetHours * 3600;
+
+      function updateClock() {
+        const h = Math.floor(remainingSeconds / 3600);
+        const m = Math.floor((remainingSeconds % 3600) / 60);
+        const s = remainingSeconds % 60;
+        const clockEl = document.getElementById('live-sla-clock');
+        if (clockEl) {
+          clockEl.innerText = `${String(h).padStart(2, '0')}h : ${String(m).padStart(2, '0')}m : ${String(s).padStart(2, '0')}s`;
+        }
+        if (remainingSeconds > 0) remainingSeconds--;
+      }
+      updateClock();
+      slaTimerInterval = setInterval(updateClock, 1000);
+    }
+
+    // Select Incident in Drawer
     function selectIncident(inc) {
       const container = document.getElementById('selected-incident-card');
       const isCritical = inc.severity_score >= 8;
@@ -599,11 +641,24 @@
       const isFraud = inc.status === 'CONTRACTOR_FRAUD_FLAGGED';
       const statusColor = isResolved ? 'text-emerald-400' : isCritical ? 'text-rose-400' : 'text-amber-400';
 
+      startSlaTimer(inc.sla_hours || 24);
+
       container.innerHTML = `
-        <div class="space-y-3 animate-fadeIn">
+        <div class="space-y-3.5 animate-fadeIn">
           <div class="flex items-center justify-between">
-            <span class="font-mono text-cyan-400 font-bold">${inc.id}</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusColor} bg-slate-900 border border-slate-700">${inc.status}</span>
+            <span class="font-mono text-cyan-400 font-bold text-sm tracking-wider">${inc.id}</span>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor} bg-slate-900 border border-slate-700 shadow-sm">${inc.status}</span>
+          </div>
+
+          <!-- LIVE SLA COUNTDOWN CLOCK -->
+          <div class="p-3 bg-gradient-to-r from-rose-950/40 via-surface to-slate-900 rounded-xl border border-rose-900/50 flex items-center justify-between">
+            <div class="text-[11px] text-slate-300 font-medium flex items-center gap-1.5">
+              <i data-lucide="timer" class="w-4 h-4 text-rose-400 animate-spin"></i>
+              <span>Mandatory SLA Breach In:</span>
+            </div>
+            <span id="live-sla-clock" class="font-mono text-xs font-black text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800 tracking-wider">
+              --h : --m : --s
+            </span>
           </div>
 
           <!-- 5-STAGE PROGRESS STEPPER -->
@@ -634,8 +689,8 @@
               <span class="font-mono font-bold text-cyan-400">⚡ ${inc.upvote_count} Citizens Clustered</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-slate-400">SLA Window:</span>
-              <span class="font-mono text-white">${inc.sla_hours} Hours</span>
+              <span class="text-slate-400">Estimated Municipal Repair Cost:</span>
+              <span class="font-mono font-bold text-emerald-400">₹35,000 - ₹50,000</span>
             </div>
           </div>
 
@@ -644,7 +699,7 @@
             <span class="text-emerald-400 font-bold flex items-center gap-1.5">
               <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Deepfake / AI Fraud Check:
             </span>
-            <span class="text-slate-200 font-mono">AUTHENTIC (Sensor EXIF Verified)</span>
+            <span class="text-slate-200 font-mono">AUTHENTIC (Sensor EXIF Match)</span>
           </div>
 
           <div>
@@ -662,7 +717,16 @@
             <pre class="bg-obsidian p-2.5 rounded-lg border border-slate-800 text-[10px] font-mono whitespace-pre-wrap text-slate-300">${inc.escalation_notice}</pre>
           </div>
 
-          <button onclick="window.print()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition">
+          <!-- ON-GROUND QR VERIFICATION CODE -->
+          <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-cyan-400 block">On-Ground QR Docket Token:</span>
+              <span class="text-[11px] text-slate-400">Scannable by Ward Inspector</span>
+            </div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=https://civic-nexus.onrender.com/docket/${inc.id}&color=38-189-248&bgcolor=15-23-42" alt="QR" class="w-12 h-12 rounded border border-cyan-800/80 shadow-md" />
+          </div>
+
+          <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm">
             <i data-lucide="printer" class="w-3.5 h-3.5"></i> Export Official Statutory Docket (Print / PDF)
           </button>
         </div>
@@ -956,8 +1020,8 @@
         const isSatisfactory = audit.verdict === 'VERIFIED_SATISFACTORY';
 
         resultContainer.className = isSatisfactory 
-          ? "glassmorphism p-6 rounded-2xl border border-emerald-800 space-y-4 animate-fadeIn"
-          : "glassmorphism p-6 rounded-2xl border border-rose-800 space-y-4 animate-fadeIn";
+          ? "glassmorphism glow-border p-6 rounded-2xl border border-emerald-800 space-y-4 animate-fadeIn"
+          : "glassmorphism glow-border p-6 rounded-2xl border border-rose-800 space-y-4 animate-fadeIn";
 
         resultContainer.innerHTML = `
           <div class="flex items-center justify-between">
