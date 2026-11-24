@@ -83,7 +83,27 @@
       #printable-docket, #printable-docket * { visibility: visible; }
       #printable-docket { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; }
     }
-  </style>
+  /* CIVIC-NEXUS reference command-center layout */
+body{display:grid!important;grid-template-columns:210px minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh;align-items:start;background:radial-gradient(ellipse at 57% 7%,#101e48 0,#050811 72%)}
+body>header{grid-column:1/-1;grid-row:1;position:relative!important;display:grid!important;grid-template-columns:1fr;gap:12px;padding:12px 18px!important;background:linear-gradient(100deg,#06132b,#030919 65%,#07142c)!important;border:1px solid #123b69;border-radius:14px;margin:7px 8px 0;box-shadow:0 8px 28px #0008}
+body>header>div:first-child{display:flex;align-items:center;min-height:42px}
+body>header>div:nth-child(2){display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px!important;width:100%;font-size:10px!important}
+body>header>div:nth-child(2)>div,body>header>div:nth-child(2)>button{min-width:0;justify-content:center;padding:9px 7px!important;background:linear-gradient(135deg,#0b1b37,#081126)!important;border:1px solid #164578!important;border-radius:10px!important;box-shadow:inset 0 0 14px #0f70aa16,0 4px 14px #0004}
+body>header>div:nth-child(2)>div:first-child{border-color:#16754f!important;background:linear-gradient(110deg,#06261e,#0a1928)!important;color:#8fffd0!important}
+body>div:nth-of-type(1){display:none!important}
+body>div:nth-of-type(2){grid-column:1;grid-row:2;position:sticky;top:8px;align-self:stretch;min-height:calc(100vh - 92px);margin:8px 0 8px 8px;padding:10px!important;display:flex;flex-direction:column;gap:5px;background:linear-gradient(180deg,#071630,#061126 70%,#0c1d43)!important;border:1px solid #17487e;border-radius:15px}
+body>div:nth-of-type(2) button{width:100%;min-height:42px;justify-content:flex-start;padding:10px 11px!important;border:1px solid transparent;border-radius:9px!important;font-size:11px!important}
+body>div:nth-of-type(2) button:hover,body>div:nth-of-type(2) button:focus{background:linear-gradient(100deg,#4721dd,#0c48a3)!important;border-color:#674af7!important;box-shadow:0 0 15px #4538c688}
+body>main{grid-column:2;grid-row:2;max-width:none!important;width:100%;margin:0!important;padding:16px 17px 22px!important}
+#view-triage>div:nth-child(2){grid-template-columns:minmax(0,1.72fr) minmax(320px,.86fr)!important;gap:12px!important;align-items:stretch}
+#view-triage>div:nth-child(2)>div:first-child{padding:7px!important;background:linear-gradient(145deg,#07152f,#050e20)!important;border-color:#145193!important;border-radius:14px!important}
+#map{height:min(57vh,590px)!important;min-height:390px;border:1px solid #255683;border-radius:10px;overflow:hidden}
+#view-triage>div:nth-child(2)>div:last-child{height:min(57vh,590px)!important;min-height:390px;border-color:#15528b!important;background:linear-gradient(145deg,#07152f,#050e20)!important}
+#view-triage>div:first-child{margin:0 2px 12px}
+.leaflet-tile{filter:brightness(.82) saturate(1.2)!important}
+@media(max-width:1050px){body{grid-template-columns:180px minmax(0,1fr)}body>header>div:nth-child(2){grid-template-columns:repeat(4,minmax(0,1fr))}#view-triage>div:nth-child(2){grid-template-columns:1fr!important}#view-triage>div:nth-child(2)>div:last-child{height:auto!important;min-height:300px}}
+@media(max-width:700px){body{display:flex!important;flex-direction:column}body>header{width:auto;position:relative!important}body>header>div:nth-child(2){grid-template-columns:repeat(2,minmax(0,1fr))}body>div:nth-of-type(2){position:sticky;top:0;z-index:50;min-height:0;margin:6px 8px;flex-direction:row;overflow-x:auto}body>div:nth-of-type(2) button{min-width:max-content;width:auto}body>main{padding:10px!important}#map{height:55vh!important;min-height:320px}}
+</style>
 </head>
 <body class="bg-obsidian text-slate-100 min-h-screen font-sans flex flex-col selection:bg-cyan-500 selection:text-black">
 
@@ -514,8 +534,8 @@
     function initMap() {
       if (map) return;
       map = L.map('map').setView([12.9550, 77.6100], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
         maxZoom: 19
       }).addTo(map);
 
